@@ -1,0 +1,7 @@
+anthropic>=0.40.0
+pdfplumber>=0.11.0
+pydantic>=2.0.0
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+# Sample PDF generation (dev only — not required at agent runtime)
+reportlab>=4.0.0
