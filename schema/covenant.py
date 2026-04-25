@@ -4,10 +4,17 @@ from pydantic import BaseModel, field_validator, model_validator
 
 
 class ThresholdValue(BaseModel):
-    value: float
-    operator: Literal[">=", "<=", ">", "<", "="]
-    unit: Optional[str] = None       # e.g., "x", "%", "USD millions"
+    upper_threshold: Optional[float] = None
+    lower_threshold: Optional[float] = None
+    type: Literal["numerical", "percentage"]
+    unit: Optional[str] = None        # e.g., "x", "USD millions"
     test_period: Optional[str] = None  # e.g., "trailing 12 months"
+
+    @model_validator(mode="after")
+    def at_least_one_bound(self) -> "ThresholdValue":
+        if self.upper_threshold is None and self.lower_threshold is None:
+            raise ValueError("at least one of upper_threshold or lower_threshold must be set")
+        return self
 
 
 class CovenantAmendment(BaseModel):
@@ -30,7 +37,10 @@ class Covenant(BaseModel):
     description: str                 # one-line human summary
     obligation_text: str             # verbatim clause text from the document
     threshold: Optional[ThresholdValue] = None
-    test_frequency: Optional[str] = None   # e.g., "quarterly", "annually"
+    frequency: Optional[str] = None         # e.g., "quarterly", "annually"
+    schedule_start_date: Optional[str] = None  # ISO-8601 or textual date from document
+    maturity_date: Optional[str] = None        # ISO-8601 or textual date from document
+    grace_period: Optional[str] = None         # e.g., "30 days", "5 business days"
     obligor: str                     # borrower, guarantor, etc.
     source_section: str              # e.g., "Section 7.1(a)"
     source_page: int

@@ -15,8 +15,11 @@ def _valid_covenant(**overrides) -> dict:
         "subtype": "leverage_ratio",
         "description": "Leverage ratio cap",
         "obligation_text": "The Borrower shall not exceed 4.00x.",
-        "threshold": {"value": 4.0, "operator": "<=", "unit": "x", "test_period": "quarterly"},
-        "test_frequency": "quarterly",
+        "threshold": {"upper_threshold": 4.0, "type": "numerical", "unit": "x", "test_period": "quarterly"},
+        "frequency": "quarterly",
+        "schedule_start_date": None,
+        "maturity_date": None,
+        "grace_period": None,
         "obligor": "Borrower",
         "source_section": "Section 7.1(a)",
         "source_page": 5,
@@ -43,7 +46,10 @@ class TestValidateCovenants:
             source_section="Section 7.2(a)",
             source_page=6,
             threshold=None,
-            test_frequency=None,
+            frequency=None,
+            schedule_start_date=None,
+            maturity_date=None,
+            grace_period=None,
         )
         result = json.loads(validate_covenants([_valid_covenant(), cov2]))
         assert result["status"] == "valid"

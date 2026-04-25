@@ -19,8 +19,11 @@ def _base_covenant(**overrides) -> dict:
         "subtype": "leverage_ratio",
         "description": "Leverage ratio cap of 4.00x",
         "obligation_text": "The Borrower shall not exceed 4.00x.",
-        "threshold": {"value": 4.0, "operator": "<=", "unit": "x", "test_period": "quarterly"},
-        "test_frequency": "quarterly",
+        "threshold": {"upper_threshold": 4.0, "type": "numerical", "unit": "x", "test_period": "quarterly"},
+        "frequency": "quarterly",
+        "schedule_start_date": None,
+        "maturity_date": None,
+        "grace_period": None,
         "obligor": "Borrower",
         "source_section": "Section 7.1(a)",
         "source_page": 5,
@@ -33,13 +36,25 @@ def _base_covenant(**overrides) -> dict:
 
 
 class TestThresholdValue:
-    def test_valid(self):
-        t = ThresholdValue(value=4.0, operator="<=", unit="x", test_period="quarterly")
-        assert t.value == 4.0
+    def test_valid_upper(self):
+        t = ThresholdValue(upper_threshold=4.0, type="numerical", unit="x", test_period="quarterly")
+        assert t.upper_threshold == 4.0
 
-    def test_invalid_operator(self):
+    def test_valid_lower(self):
+        t = ThresholdValue(lower_threshold=2.0, type="percentage")
+        assert t.lower_threshold == 2.0
+
+    def test_valid_both_bounds(self):
+        t = ThresholdValue(upper_threshold=5.0, lower_threshold=1.0, type="numerical")
+        assert t.upper_threshold == 5.0 and t.lower_threshold == 1.0
+
+    def test_missing_both_thresholds(self):
         with pytest.raises(ValidationError):
-            ThresholdValue(value=4.0, operator="!=")  # not in Literal
+            ThresholdValue(type="numerical")  # neither upper nor lower set
+
+    def test_invalid_type(self):
+        with pytest.raises(ValidationError):
+            ThresholdValue(upper_threshold=4.0, type="ratio")  # not in Literal
 
 
 class TestCovenantAmendment:
