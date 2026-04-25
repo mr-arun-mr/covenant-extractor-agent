@@ -173,3 +173,62 @@ def amended_pdf_path() -> Path:
             "Run 'python scripts/create_sample_pdf.py' to generate the sample PDF fixture"
         )
     return path
+
+
+# ---------------------------------------------------------------------------
+# Plain-text fixture content
+# ---------------------------------------------------------------------------
+
+# Page 1 (lines 1-50): clean covenant text
+_SAMPLE_TXT_CONTENT = """\
+CREDIT AGREEMENT
+
+Section 7.1 Financial Covenants
+(a) Leverage Ratio. The Borrower shall not permit the Consolidated Leverage Ratio,
+as of the last day of any fiscal quarter, to exceed 4.00 to 1.00.
+
+(b) Interest Coverage Ratio. The Borrower shall maintain an Interest Coverage Ratio
+of not less than 2.50x for any trailing 12-month period, tested quarterly.
+
+Section 7.2 Negative Covenants
+(a) Indebtedness. The Borrower shall not incur any additional Indebtedness
+in excess of $50,000,000 without prior written consent of the Agent.
+
+Section 7.3 Affirmative Covenants
+(a) Financial Statements. The Borrower shall deliver audited annual financial
+statements within 90 days of each fiscal year end.
+""" + "\n" * 35  # pad to 51 lines → 2 pages
+
+# Page 1 (lines 1-50): ~~old~~ [RED: new] together on the same line (marking="both")
+# Page 2 (lines 51-100): ~~$50M~~ alone (marking="strikethrough")
+#                         [RED: ESG clause] alone (marking="red_text")
+_AMENDED_TXT_CONTENT = (
+    # Page 1
+    "Section 7.1 Financial Covenants\n"
+    "The ratio shall not exceed ~~4.00x~~ [RED: 4.50x] as tested quarterly.\n"
+    "Interest coverage shall not be less than 2.25x.\n"
+    + "\n" * 47  # pad page 1 to 50 lines
+    # Page 2
+    + "Section 7.2 Negative Covenants\n"
+    "Borrower shall not incur Indebtedness in excess of ~~$50,000,000~~ per annum.\n"
+    "[RED: ESG Covenant. Borrower shall maintain ESG compliance score above 70.]\n"
+    + "\n" * 47  # pad page 2 to 50 lines
+)
+
+
+@pytest.fixture(scope="session")
+def sample_txt_path(tmp_path_factory) -> Path:
+    """A clean (no amendment markers) plain-text credit agreement for unit tests."""
+    tmp = tmp_path_factory.mktemp("txts")
+    p = tmp / "sample_credit_agreement.txt"
+    p.write_text(_SAMPLE_TXT_CONTENT, encoding="utf-8")
+    return p
+
+
+@pytest.fixture(scope="session")
+def amended_txt_path(tmp_path_factory) -> Path:
+    """A plain-text credit agreement with ~~strikethrough~~ and [RED: ...] markers."""
+    tmp = tmp_path_factory.mktemp("txts_amended")
+    p = tmp / "amended_credit_agreement.txt"
+    p.write_text(_AMENDED_TXT_CONTENT, encoding="utf-8")
+    return p
