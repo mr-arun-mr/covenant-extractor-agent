@@ -91,3 +91,57 @@ class TestLookupSourceClause:
         data = json.loads(raw)
         assert len(data["matches"]) >= 1
         assert data["matches"][0]["page"] == 1
+
+
+class TestAmendmentDetection:
+    """Tests using the rich sample PDF that contains red text and strikethrough."""
+
+    def test_red_text_detected_on_financial_covenants_page(self, amended_pdf_path):
+        raw = extract_pdf_pages(str(amended_pdf_path), [3])
+        data = json.loads(raw)
+        page = data["pages"][0]
+        assert len(page["red_spans"]) >= 1
+        red_texts = [s["text"].strip() for s in page["red_spans"]]
+        assert any("4.50" in t for t in red_texts), f"Expected '4.50' in red spans: {red_texts}"
+
+    def test_strikethrough_detected_on_financial_covenants_page(self, amended_pdf_path):
+        raw = extract_pdf_pages(str(amended_pdf_path), [3])
+        data = json.loads(raw)
+        page = data["pages"][0]
+        assert len(page["strikethrough_spans"]) >= 1
+        strike_texts = [s["text"].strip() for s in page["strikethrough_spans"]]
+        assert any("4.00" in t for t in strike_texts), \
+            f"Expected '4.00' in strikethrough spans: {strike_texts}"
+
+    def test_both_amendment_types_on_negative_covenants_page(self, amended_pdf_path):
+        raw = extract_pdf_pages(str(amended_pdf_path), [4])
+        data = json.loads(raw)
+        page = data["pages"][0]
+        assert len(page["red_spans"]) >= 1
+        assert len(page["strikethrough_spans"]) >= 1
+
+    def test_red_only_addition_on_affirmative_covenants_page(self, amended_pdf_path):
+        raw = extract_pdf_pages(str(amended_pdf_path), [5])
+        data = json.loads(raw)
+        page = data["pages"][0]
+        assert len(page["red_spans"]) >= 1
+        assert page["strikethrough_spans"] == []
+
+    def test_cover_and_toc_pages_have_no_amendments(self, amended_pdf_path):
+        for pg in [1, 2]:
+            raw = extract_pdf_pages(str(amended_pdf_path), [pg])
+            data = json.loads(raw)
+            page = data["pages"][0]
+            assert page["red_spans"] == [], f"Unexpected red spans on page {pg}"
+            assert page["strikethrough_spans"] == [], f"Unexpected strikethrough on page {pg}"
+
+    def test_pdf_has_six_pages(self, amended_pdf_path):
+        raw = get_pdf_structure(str(amended_pdf_path))
+        data = json.loads(raw)
+        assert data["page_count"] == 6
+
+    def test_lookup_finds_covenants_in_amended_pdf(self, amended_pdf_path):
+        raw = lookup_source_clause(str(amended_pdf_path), "Leverage Ratio", page_hint=3)
+        data = json.loads(raw)
+        assert len(data["matches"]) >= 1
+        assert data["matches"][0]["page"] == 3

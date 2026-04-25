@@ -29,29 +29,52 @@ def _is_red(color: Any) -> bool:
     return r >= _RED_R_MIN and g <= _RED_G_MAX and b <= _RED_B_MAX
 
 
-def _classify_char_annotations(chars: list[dict], annots: list[dict]) -> list[dict]:
+def _classify_char_annotations(
+    chars: list[dict],
+    annots: list[dict],
+    lines: list[dict] | None = None,
+) -> list[dict]:
     """
     Tag each character dict with amendment markers:
     - is_red: True if the character's non-stroking color is red
-    - is_strikethrough: True if a line annotation overlaps the character's bbox
+    - is_strikethrough: True if a line annotation or drawn line overlaps the char bbox
+
+    `lines` is pdfplumber's page.lines list; thin horizontal drawn lines are
+    treated as strikethrough (coordinates are top-based, matching char.top/bottom).
     """
-    # Build list of strikethrough annotation bboxes (type StrikeOut or a line
-    # annotation whose midpoint y falls within the char's y-range).
+    # Build list of strikethrough bboxes in pdfplumber top-based coordinates.
+    # Each entry is (x0, top, x1, bottom).
     strike_rects: list[tuple[float, float, float, float]] = []
+
+    # --- PDF annotation objects (StrikeOut / thin Line annotations) ----------
     for annot in (annots or []):
         subtype = annot.get("data", {}).get("Subtype", "")
         if subtype in ("/StrikeOut", "StrikeOut"):
             rect = annot.get("data", {}).get("Rect")
             if rect and len(rect) == 4:
                 strike_rects.append(tuple(rect))
-        # Also treat thin horizontal line annotations as strikethrough
         elif subtype in ("/Line", "Line"):
             rect = annot.get("data", {}).get("Rect")
             if rect and len(rect) == 4:
                 x0, y0, x1, y1 = rect
-                height = abs(y1 - y0)
-                if height < 3:  # very thin horizontal line
+                if abs(y1 - y0) < 3:
                     strike_rects.append(tuple(rect))
+
+    # --- Content-stream drawn lines (top-based coords from pdfplumber) -------
+    # pdfplumber normalises page.lines to top/bottom (distance from page top),
+    # consistent with char.top / char.bottom.  A thin horizontal line whose
+    # vertical midpoint falls inside a character's bounding box is treated as
+    # strikethrough.  We skip very short lines to avoid detecting punctuation
+    # or tick marks.
+    for ln in (lines or []):
+        lx0 = ln.get("x0", 0)
+        lx1 = ln.get("x1", 0)
+        ltop = ln.get("top", 0)
+        lbottom = ln.get("bottom", 0)
+        width = abs(lx1 - lx0)
+        height = abs(lbottom - ltop)
+        if height < 3 and width > 10:
+            strike_rects.append((lx0, ltop, lx1, lbottom))
 
     tagged = []
     for char in chars:
@@ -197,7 +220,7 @@ def extract_pdf_pages(pdf_path: str, page_numbers: list[int], detect_amendments:
             if detect_amendments:
                 chars = page.chars or []
                 annots = page.annots or []
-                tagged = _classify_char_annotations(chars, annots)
+                tagged = _classify_char_annotations(chars, annots, page.lines or [])
                 annotated = _chars_to_annotated_text(tagged)
                 results.append({
                     "page": pg,
