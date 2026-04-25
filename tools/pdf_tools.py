@@ -8,11 +8,14 @@ which lets us detect red text and strikethrough markings that indicate amendment
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
 
 import pdfplumber
+
+logger = logging.getLogger("tools.pdf")
 
 # Threshold for classifying a character's color as "red".
 # pdfplumber returns RGB components in [0, 1] range.
@@ -159,7 +162,9 @@ def get_pdf_structure(pdf_path: str) -> str:
     and a list of lines that look like section headings (ALL CAPS or numbered).
     """
     path = Path(pdf_path)
+    logger.debug("get_pdf_structure: %s", path.name)
     if not path.exists():
+        logger.warning("get_pdf_structure: file not found: %s", pdf_path)
         return json.dumps({"error": f"File not found: pdf_path"})
 
     with pdfplumber.open(str(path)) as pdf:
@@ -187,6 +192,10 @@ def get_pdf_structure(pdf_path: str) -> str:
                 if heading_re.match(line) and len(line) < 120:
                     headings.append({"page": page_num + 1, "heading": line})
 
+    logger.info("Document structure: %d page(s), %d heading(s) found in %s",
+                page_count, len(headings), path.name)
+    logger.debug("Headings: %s", [h["heading"][:60] for h in headings])
+
     return json.dumps({
         "document": path.name,
         "page_count": page_count,
@@ -206,12 +215,18 @@ def extract_pdf_pages(pdf_path: str, page_numbers: list[int], detect_amendments:
     if not path.exists():
         return json.dumps({"error": f"File not found: pdf_path"})
 
+    logger.debug("extract_pdf_pages: %s, pages=%s, detect_amendments=%s",
+                 path.name, page_numbers, detect_amendments)
+
     results: list[dict] = []
 
     with pdfplumber.open(str(path)) as pdf:
         total = len(pdf.pages)
+        logger.debug("PDF has %d page(s); requesting %d", total, len(page_numbers))
+
         for pg in sorted(set(page_numbers)):
             if pg < 1 or pg > total:
+                logger.warning("Page %d out of range (1–%d), skipping", pg, total)
                 results.append({"page": pg, "error": f"Page {pg} out of range (1–{total})"})
                 continue
 
@@ -222,6 +237,18 @@ def extract_pdf_pages(pdf_path: str, page_numbers: list[int], detect_amendments:
                 annots = page.annots or []
                 tagged = _classify_char_annotations(chars, annots, page.lines or [])
                 annotated = _chars_to_annotated_text(tagged)
+                red_count = len(annotated["red_spans"])
+                strike_count = len(annotated["strikethrough_spans"])
+                logger.debug(
+                    "Page %d: %d char(s), %d red span(s), %d strikethrough span(s)",
+                    pg, len(chars), red_count, strike_count,
+                )
+                if red_count:
+                    logger.debug("  Red spans: %s",
+                                 [s["text"][:40] for s in annotated["red_spans"]])
+                if strike_count:
+                    logger.debug("  Strikethrough spans: %s",
+                                 [s["text"][:40] for s in annotated["strikethrough_spans"]])
                 results.append({
                     "page": pg,
                     "text": annotated["text"],
@@ -229,13 +256,16 @@ def extract_pdf_pages(pdf_path: str, page_numbers: list[int], detect_amendments:
                     "strikethrough_spans": annotated["strikethrough_spans"],
                 })
             else:
+                text = page.extract_text() or ""
+                logger.debug("Page %d: %d char(s) extracted (no amendment detection)", pg, len(text))
                 results.append({
                     "page": pg,
-                    "text": page.extract_text() or "",
+                    "text": text,
                     "red_spans": [],
                     "strikethrough_spans": [],
                 })
 
+    logger.info("extract_pdf_pages: processed %d page(s) from %s", len(results), path.name)
     return json.dumps({"pages": results}, indent=2)
 
 
@@ -250,8 +280,11 @@ def lookup_source_clause(pdf_path: str, search_text: str, page_hint: int | None 
     if not path.exists():
         return json.dumps({"error": f"File not found: pdf_path"})
 
+    logger.debug("lookup_source_clause: query=%r, page_hint=%s", search_text, page_hint)
+
     query = search_text.strip().lower()
     if len(query) < 6:
+        logger.warning("lookup_source_clause: query too short (%d chars)", len(query))
         return json.dumps({"error": "search_text must be at least 6 characters"})
 
     matches: list[dict] = []
@@ -282,6 +315,10 @@ def lookup_source_clause(pdf_path: str, search_text: str, page_hint: int | None 
             if len(matches) >= 10:
                 break
 
+    logger.info("lookup_source_clause: %d match(es) for %r", len(matches), search_text)
+    if matches:
+        logger.debug("  First match on page %d: %r", matches[0]["page"],
+                     matches[0]["context"][:80])
     return json.dumps({"query": search_text, "matches": matches}, indent=2)
 
 
