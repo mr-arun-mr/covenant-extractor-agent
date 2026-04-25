@@ -45,7 +45,7 @@ prompts/
 tests/               ← pytest test suite
 ```
 
-**LLM:** `claude-sonnet-4-6` via Anthropic SDK  
+**LLM:** `claude-haiku-4-5` via Anthropic SDK  
 **PDF parsing:** `pdfplumber` (element-level color and annotation access)  
 **Schema validation:** Pydantic v2  
 **Prompt caching:** enabled on the system prompt to reduce token costs on repeated runs
@@ -149,10 +149,13 @@ Red text is detected by inspecting character-level RGB values from the PDF (`r >
 
 ---
 
-## Installation
+## Setup and Installation
 
 ```bash
 # Requires Python 3.11+
+python3 -m venv venv
+source venv/bin/activate        # (venv) appears in your prompt
+
 pip install -r requirements.txt
 ```
 

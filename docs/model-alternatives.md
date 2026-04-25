@@ -210,11 +210,11 @@ All figures in USD. Token volumes derived from agent profiling on representative
 | Model | Small (50p) | Medium (150p) | Large (300p) | $/page (medium) |
 |---|---|---|---|---|
 | `claude-opus-4-7` | $3.54 | $9.19 | $22.43 | $0.061 |
-| `claude-sonnet-4-6` *(current)* | $0.71 | $1.84 | $4.49 | $0.012 |
+| `claude-sonnet-4-6` | $0.71 | $1.84 | $4.49 | $0.012 |
 | `gpt-4o` | $0.57 | $1.50 | $3.69 | $0.010 |
 | `o4-mini` | $0.25 | $0.66 | $1.62 | $0.004 |
 | `gemini-2.5-pro` | $0.31 | $0.80 | $1.92 | $0.005 |
-| `claude-haiku-4-5` | $0.19 | $0.49 | $1.20 | $0.003 |
+| `claude-haiku-4-5` *(current)* | $0.19 | $0.49 | $1.20 | $0.003 |
 | `gpt-4o-mini` | $0.03 | $0.09 | $0.22 | $0.001 |
 | `gemini-2.0-flash` | $0.02 | $0.06 | $0.15 | $0.000 |
 

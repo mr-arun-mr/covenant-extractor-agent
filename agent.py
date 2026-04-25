@@ -25,7 +25,7 @@ from tools.validation_tools import VALIDATION_TOOL_DEFINITIONS, validate_covenan
 
 logger = logging.getLogger("agent")
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 8192
 MAX_TOOL_ROUNDS = 30  # hard cap to prevent infinite loops
 
